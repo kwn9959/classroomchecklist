@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리반 약속 실천 & 규칙 관리 시스템</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    },
+                    colors: {
+                        homework: { light: '#FFE4E6', border: '#F43F5E', text: '#9F1239', badge: '#E11D48' }, // 과제 (Rose/Red)
+                        items: { light: '#E0F2FE', border: '#0284C7', text: '#075985', badge: '#0284C7' },     // 준비물 (Sky/Blue)
+                        tardy: { light: '#FEF3C7', border: '#F59E0B', text: '#92400E', badge: '#D97706' }     // 지각 (Amber/Orange)
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+
+    <div id="app" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+
+        <!-- Header Section -->
+        <header class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6 no-print">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-2xl shadow-md">
+                            🌱
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900">우리반 약속 실천 체크리스트</h1>
+                            <p class="text-xs text-slate-500 font-medium mt-0.5">서로 배려하고 지키는 따뜻한 우리 학급 · 1번~23번 현황판</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <!-- 학기 선택 탭 (1학기 / 2학기) -->
+                    <div class="bg-slate-100 p-1 rounded-2xl flex items-center space-x-1 border border-slate-200">
+                        <button 
+                            @click="currentSemester = 1" 
+                            :class="currentSemester === 1 ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'"
+                            class="px-3.5 py-2 rounded-xl font-extrabold text-xs transition flex items-center space-x-1"
+                        >
+                            <span>🌸</span>
+                            <span>1학기</span>
+                        </button>
+                        <button 
+                            @click="currentSemester = 2" 
+                            :class="currentSemester === 2 ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'"
+                            class="px-3.5 py-2 rounded-xl font-extrabold text-xs transition flex items-center space-x-1"
+                        >
+                            <span>🍁</span>
+                            <span>2학기</span>
+                        </button>
+                    </div>
+
+                    <button @click="openClassRulesModal" class="px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center space-x-1.5 transition">
+                        <i class="fa-solid fa-scroll text-indigo-500"></i>
+                        <span>우리반 규칙 수정/보기</span>
+                    </button>
+                    <button @click="triggerPrint" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center space-x-1.5 transition">
+                        <i class="fa-solid fa-print text-emerald-600"></i>
+                        <span>현황 인쇄</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Class Rules Banner & Clickable Pending Submission Card -->
+            <div class="mt-6 pt-5 border-t border-slate-100 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <!-- Our Class Rules Display (4 Rules) -->
+                <div class="lg:col-span-2 bg-gradient-to-r from-slate-50 to-indigo-50/40 p-4 rounded-2xl border border-slate-200/80">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <span class="text-xs font-black text-indigo-900 uppercase tracking-wider bg-indigo-100 px-2 py-0.5 rounded-md">우리반 핵심 약속 4가지</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <!-- Respect -->
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/60 shadow-sm space-y-1">
+                            <div class="font-extrabold text-indigo-950 flex items-center space-x-1">
+                                <span>🤝</span>
+                                <span>존중</span>
+                            </div>
+                            <ul class="text-slate-600 text-[11px] space-y-0.5 pl-1 font-medium">
+                                <li>1. 거짓말하지 않기</li>
+                                <li>2. 다른 사람이 싫어하는 행동하지 않기</li>
+                            </ul>
+                        </div>
+                        <!-- Perseverance -->
+                        <div class="bg-white p-2.5 rounded-xl border border-slate-200/60 shadow-sm space-y-1">
+                            <div class="font-extrabold text-emerald-950 flex items-center space-x-1">
+                                <span>🌱</span>
+                                <span>끈기</span>
+                            </div>
+                            <ul class="text-slate-600 text-[11px] space-y-0.5 pl-1 font-medium">
+                                <li>1. 불평하지 않기</li>
+                                <li>2. 자기 할 일은 스스로 끝까지 해보기</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clickable Pending Writing Inspection Card -->
+                <button 
+                    @click="openPendingModal"
+                    class="p-4 rounded-2xl border transition text-left flex flex-col justify-between shadow-sm hover:shadow-md relative group cursor-pointer"
+                    :class="totalPendingSubmissionsCount > 0 ? 'bg-indigo-600 text-white border-indigo-500 ring-2 ring-indigo-300 ring-offset-1' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'"
+                >
+                    <div class="flex items-start justify-between w-full">
+                        <div class="flex items-center space-x-2.5">
+                            <span 
+                                class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm"
+                                :class="totalPendingSubmissionsCount > 0 ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700'"
+                            >
+                                ✍️
+                            </span>
+                            <div>
+                                <div class="font-black text-sm" :class="totalPendingSubmissionsCount > 0 ? 'text-white' : 'text-slate-900'">
+                                    미제출 약속 쓰기
+                                </div>
+                                <div class="text-[11px] mt-0.5 font-medium" :class="totalPendingSubmissionsCount > 0 ? 'text-indigo-100' : 'text-slate-500'">
+                                    👈 누르면 검사 대상 학생 확인
+                                </div>
+                            </div>
+                        </div>
+                        <span 
+                            class="text-lg font-black font-mono px-3 py-1 rounded-xl shadow-inner"
+                            :class="totalPendingSubmissionsCount > 0 ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-800'"
+                        >
+                            {{ totalPendingSubmissionsCount }}건
+                        </span>
+                    </div>
+
+                    <div class="mt-3 pt-2 border-t text-[11px] font-bold flex items-center justify-between w-full" :class="totalPendingSubmissionsCount > 0 ? 'border-indigo-400/50 text-indigo-100' : 'border-slate-100 text-indigo-600'">
+                        <span>{{ totalPendingSubmissionsCount > 0 ? '클릭하여 제출 내역 검사하기' : '모두 제출 완료됨' }}</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </button>
+            </div>
+        </header>
+
+        <!-- Quick Filter & Action Bar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 no-print">
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">보기:</span>
+                <button @click="filterStatus = 'ALL'" :class="filterStatus === 'ALL' ? 'bg-slate-800 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'" class="px-3 py-1.5 rounded-xl text-xs font-bold transition">
+                    전체 (23명)
+                </button>
+                <button @click="filterStatus = 'WRITING_REQUIRED'" :class="filterStatus === 'WRITING_REQUIRED' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1">
+                    <span>규칙 쓰기 대상 ({{ actionRequiredStudentsCount }})</span>
+                </button>
+                <button @click="filterStatus = 'CLEAN'" :class="filterStatus === 'CLEAN' ? 'bg-emerald-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'" class="px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                    약속 잘 지킴 ({{ cleanStudentsCount }})
+                </button>
+            </div>
+
+            <div class="text-xs text-slate-500 font-semibold bg-white px-3 py-1.5 rounded-xl border border-slate-200 flex items-center space-x-1.5">
+                <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                <span>체크 다음 등교일까지 기본 제출이며, 미제출 시 하루마다 +1회씩 증가합니다. (주말 제외)</span>
+            </div>
+        </div>
+
+        <!-- Student Grid (1번 ~ 23번) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 no-print">
+            <div 
+                v-for="student in filteredStudents" 
+                :key="student.id"
+                class="bg-white rounded-3xl border transition duration-200 flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-md relative"
+                :class="{
+                    'ring-2 ring-rose-400 border-rose-300': student.records.length >= 6,
+                    'border-amber-300': student.records.length >= 4 && student.records.length < 6,
+                    'border-indigo-200': student.records.length >= 2 && student.records.length < 4,
+                    'border-slate-200': student.records.length < 2
+                }"
+            >
+                <!-- Student Card Top Header -->
+                <div class="p-4 pb-2">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-9 h-9 rounded-2xl bg-slate-100 text-slate-800 flex items-center justify-center font-black text-base border border-slate-200 shadow-inner">
+                                {{ student.id }}
+                            </span>
+                            <span class="font-extrabold text-slate-800 text-base">{{ student.id }}번</span>
+                        </div>
+                        
+                        <!-- Check Count Badge -->
+                        <span 
+                            class="px-2.5 py-1 rounded-full text-xs font-black font-mono shadow-sm"
+                            :class="getCountBadgeStyle(student.records.length)"
+                        >
+                            {{ student.records.length }}회 체크
+                        </span>
+                    </div>
+
+                    <!-- Rule Writing Target List -->
+                    <div v-if="getRequiredPenalties(student.records.length, student).length > 0" class="mt-2.5 mb-1 space-y-1.5">
+                        <div 
+                            v-for="penalty in getRequiredPenalties(student.records.length, student)" 
+                            :key="penalty.level"
+                            class="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between border shadow-sm transition"
+                            :class="isLevelSubmitted(student, penalty.level) ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-950'"
+                        >
+                            <span class="flex items-center space-x-1 text-[11px] truncate mr-1">
+                                <span>✍️ {{ penalty.shortLabel }}</span>
+                            </span>
+                            <button 
+                                @click="toggleLevelSubmission(student, penalty.level)"
+                                class="px-2 py-0.5 rounded-lg text-[10px] font-bold transition flex items-center space-x-1 shrink-0"
+                                :class="isLevelSubmitted(student, penalty.level) ? 'bg-emerald-600 text-white' : 'bg-white text-rose-700 border border-rose-300 hover:bg-rose-100'"
+                            >
+                                <i class="fa-solid text-[9px]" :class="isLevelSubmitted(student, penalty.level) ? 'fa-check' : 'fa-clock'"></i>
+                                <span>{{ isLevelSubmitted(student, penalty.level) ? '완료 ✓' : '미제출 ⚠️' }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Middle: Recent Check Tags -->
+                <div class="px-4 py-2 bg-slate-50/60 border-y border-slate-100 flex-1 min-h-[76px] flex flex-col justify-center">
+                    <div v-if="student.records.length === 0" class="h-full flex items-center justify-center text-slate-400 text-xs italic font-medium">
+                        ✨ 약속을 잘 지키고 있어요!
+                    </div>
+                    <div v-else class="space-y-1.5">
+                        <div 
+                            v-for="(rec, idx) in student.records.slice(-2)" 
+                            :key="idx"
+                            class="text-xs px-2.5 py-1.2 rounded-xl border font-bold flex items-center justify-between truncate"
+                            :class="getReasonStyle(rec.type)"
+                        >
+                            <span class="truncate flex items-center space-x-1">
+                                <span>{{ getReasonIcon(rec.type) }}</span>
+                                <span>{{ rec.type }}</span>
+                            </span>
+                            <span class="text-[10px] opacity-75 font-mono ml-1 font-normal">{{ rec.date.slice(5) }}</span>
+                        </div>
+                        <button 
+                            v-if="student.records.length > 2" 
+                            @click="openStudentDetailModal(student)"
+                            class="w-full text-right text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline pt-0.5 cursor-pointer block"
+                        >
+                            + 이전 {{ student.records.length - 2 }}건 더보기 <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card Bottom: Action Buttons -->
+                <div class="p-3 bg-white grid grid-cols-2 gap-2">
+                    <button 
+                        @click="openAddRecordModal(student)" 
+                        class="w-full py-2 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center space-x-1 transition shadow-sm"
+                    >
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>체크</span>
+                    </button>
+                    <button 
+                        @click="openStudentDetailModal(student)" 
+                        class="w-full py-2 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 transition"
+                    >
+                        <i class="fa-solid fa-list-ul text-[10px]"></i>
+                        <span>상세</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 1: 약속 체크 추가 모달 -->
+        <div v-if="showAddModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+            <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+                <div class="bg-indigo-600 px-6 py-4 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-8 h-8 rounded-xl bg-indigo-500 text-white font-bold flex items-center justify-center text-sm border border-indigo-400">
+                            {{ activeStudent?.id }}
+                        </span>
+                        <h3 class="font-bold text-lg">{{ activeStudent?.id }}번 학생 약속 체크</h3>
+                    </div>
+                    <button @click="showAddModal = false" class="text-indigo-200 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveRecord" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">날짜 선택</label>
+                        <input 
+                            type="date" 
+                            v-model="formDate" 
+                            required 
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2">체크 사유 선택 <span class="text-rose-500">*</span></label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label 
+                                class="flex items-center p-3 rounded-2xl border-2 cursor-pointer transition"
+                                :class="formType === '과제' ? 'border-rose-500 bg-rose-50 text-rose-950 font-bold shadow-sm' : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            >
+                                <div class="flex items-center space-x-2.5">
+                                    <input type="radio" value="과제" v-model="formType" class="text-rose-600 focus:ring-rose-500">
+                                    <span class="text-base">📝 과제</span>
+                                </div>
+                            </label>
+
+                            <label 
+                                class="flex items-center p-3 rounded-2xl border-2 cursor-pointer transition"
+                                :class="formType === '준비물' ? 'border-sky-500 bg-sky-50 text-sky-950 font-bold shadow-sm' : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            >
+                                <div class="flex items-center space-x-2.5">
+                                    <input type="radio" value="준비물" v-model="formType" class="text-sky-600 focus:ring-sky-500">
+                                    <span class="text-base">🎒 준비물</span>
+                                </div>
+                            </label>
+
+                            <label 
+                                class="flex items-center p-3 rounded-2xl border-2 cursor-pointer transition"
+                                :class="formType === '지각' ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold shadow-sm' : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            >
+                                <div class="flex items-center space-x-2.5">
+                                    <input type="radio" value="지각" v-model="formType" class="text-amber-600 focus:ring-amber-500">
+                                    <span class="text-base">⏰ 지각</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">상세 메모 (선택)</label>
+                        <textarea 
+                            v-model="formNote" 
+                            rows="3" 
+                            placeholder="예: 수학익힘책 34~36쪽, 미술 준비물(수채화 물감), 10분 지각 등"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+                        ></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button 
+                            type="button" 
+                            @click="showAddModal = false" 
+                            class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs"
+                        >
+                            취소
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-200 flex items-center space-x-1.5"
+                        >
+                            <i class="fa-solid fa-check"></i>
+                            <span>체크 저장하기</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL 2: 규칙 쓰기 친근한 안내 팝업 -->
+        <div v-if="penaltyAlert.show" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4 no-print">
+            <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border-2 border-indigo-200 overflow-hidden transform transition-all text-center">
+                <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 py-6 text-white relative">
+                    <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-2 backdrop-blur-sm text-3xl">
+                        🌱
+                    </div>
+                    <h2 class="text-2xl font-black tracking-tight">우리반 약속 실천 시간이에요!</h2>
+                    <p class="text-xs text-indigo-100 mt-1">우리반 규칙을 다시 한 번 마음에 새겨봅니다.</p>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                        <span class="text-xs text-slate-500 font-bold block mb-1">학생 번호</span>
+                        <div class="text-3xl font-black text-slate-800">
+                            <span class="text-indigo-600 font-mono">{{ penaltyAlert.studentId }}번</span> 학생
+                        </div>
+                        <div class="mt-2 inline-block px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-bold text-xs">
+                            누적 체크 <span class="font-mono text-sm underline">{{ penaltyAlert.count }}회</span> 달성
+                        </div>
+                    </div>
+
+                    <div class="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950">
+                        <div class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">실천 과제</div>
+                        <div class="text-xl font-black text-amber-900 flex items-center justify-center space-x-2">
+                            <span>✍️</span>
+                            <span>{{ penaltyAlert.penaltyText }}</span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-600 leading-relaxed bg-slate-100 p-3.5 rounded-2xl text-left font-medium">
+                        💡 <strong>선생님 안내:</strong> 학생과 대화를 나눈 후 다음 등교일까지 우리반 규칙을 <strong>{{ penaltyAlert.penaltyText }}</strong> 작성하여 제출하도록 안내해 주세요. (미제출 시 하루마다 1회씩 증가하며, 주말은 제외됩니다)
+                    </p>
+
+                    <div class="pt-2 flex items-center justify-center">
+                        <button 
+                            @click="penaltyAlert.show = false" 
+                            class="w-full py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition"
+                        >
+                            확인했습니다
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 3: 학생 상세 내역 및 제출 상태 확인 모달 -->
+        <div v-if="showDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+            <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[85vh]">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-9 h-9 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-base">
+                            {{ activeStudent?.id }}
+                        </span>
+                        <div>
+                            <h3 class="font-bold text-lg">{{ activeStudent?.id }}번 학생 약속 체크 기록</h3>
+                            <p class="text-xs text-slate-400">누적 {{ activeStudent?.records.length }}건 체크됨</p>
+                        </div>
+                    </div>
+                    <button @click="showDetailModal = false" class="text-slate-400 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 bg-slate-50 border-b border-slate-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1">
+                            <span class="text-xs font-bold text-slate-500">우리반 약속 쓰기 단계별 과제 현황:</span>
+                            
+                            <div v-if="getRequiredPenalties(activeStudent?.records?.length || 0, activeStudent).length === 0" class="text-sm font-bold text-emerald-600 mt-1 flex items-center space-x-1">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span>현재 해당되는 약속 쓰기 과제가 없습니다. (모범적임)</span>
+                            </div>
+                            
+                            <div v-else class="mt-2 space-y-2">
+                                <div 
+                                    v-for="penalty in getRequiredPenalties(activeStudent?.records?.length || 0, activeStudent)" 
+                                    :key="penalty.level"
+                                    class="p-2.5 rounded-xl border flex items-center justify-between bg-white shadow-sm"
+                                    :class="isLevelSubmitted(activeStudent, penalty.level) ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'"
+                                >
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-base">✍️</span>
+                                        <span class="text-xs font-bold text-slate-800">{{ penalty.fullLabel }}</span>
+                                    </div>
+                                    <button 
+                                        @click="toggleLevelSubmission(activeStudent, penalty.level)"
+                                        class="px-3 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                                        :class="isLevelSubmitted(activeStudent, penalty.level) ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white hover:bg-rose-700'"
+                                    >
+                                        <i class="fa-solid" :class="isLevelSubmitted(activeStudent, penalty.level) ? 'fa-check-circle' : 'fa-circle-exclamation'"></i>
+                                        <span>{{ isLevelSubmitted(activeStudent, penalty.level) ? '제출 완료됨 ✓' : '미제출 (완료 처리하기)' }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button 
+                            @click="openAddRecordModal(activeStudent)" 
+                            class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center space-x-1 shadow-sm self-start sm:self-auto"
+                        >
+                            <i class="fa-solid fa-plus"></i>
+                            <span>새 체크 추가</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-6 overflow-y-auto flex-1">
+                    <div v-if="!activeStudent?.records || activeStudent.records.length === 0" class="py-12 text-center text-slate-400">
+                        <div class="text-4xl mb-2">🌟</div>
+                        <p class="text-sm font-bold text-slate-700">체크된 약속 기록이 전혀 없습니다!</p>
+                        <p class="text-xs text-slate-400 mt-1">우리반 약속을 아주 훌륭하게 지키고 있습니다.</p>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div 
+                            v-for="(rec, index) in activeStudent.records" 
+                            :key="rec.id"
+                            class="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:border-slate-300 transition shadow-sm"
+                        >
+                            <div class="space-y-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs font-mono font-bold text-slate-400">#{{ index + 1 }}</span>
+                                    <span class="text-xs font-bold text-slate-500 font-mono"><i class="fa-regular fa-calendar mr-1"></i>{{ rec.date }}</span>
+                                    
+                                    <span class="px-2.5 py-0.5 rounded-lg text-xs font-bold" :class="getReasonStyle(rec.type)">
+                                        {{ getReasonIcon(rec.type) }} {{ rec.type }}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-slate-800 font-medium pl-1">
+                                    {{ rec.note || '상세 메모 없음' }}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center space-x-1 self-end sm:self-center shrink-0">
+                                <button 
+                                    @click="openEditRecordModal(rec)" 
+                                    class="px-2.5 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg font-bold transition flex items-center space-x-1"
+                                    title="수정"
+                                >
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                    <span>수정</span>
+                                </button>
+                                <button 
+                                    @click="deleteRecord(activeStudent, rec.id)" 
+                                    class="px-2.5 py-1.5 text-xs text-rose-500 hover:bg-rose-50 rounded-lg font-bold transition flex items-center space-x-1"
+                                    title="삭제"
+                                >
+                                    <i class="fa-regular fa-trash-can"></i>
+                                    <span>삭제</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-100 border-t border-slate-200 flex justify-end">
+                    <button @click="showDetailModal = false" class="px-5 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 3.5: 약속 체크 수정 모달 -->
+        <div v-if="showEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+            <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden transform transition-all">
+                <div class="bg-slate-800 px-6 py-4 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-8 h-8 rounded-xl bg-slate-700 text-white font-bold flex items-center justify-center text-sm">
+                            ✏️
+                        </span>
+                        <h3 class="font-bold text-lg">{{ activeStudent?.id }}번 학생 체크 내역 수정</h3>
+                    </div>
+                    <button @click="showEditModal = false" class="text-slate-400 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <form @submit.prevent="saveEditedRecord" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">날짜 선택</label>
+                        <input 
+                            type="date" 
+                            v-model="editFormDate" 
+                            required 
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-2">체크 사유 선택 <span class="text-rose-500">*</span></label>
+                        <div class="grid grid-cols-1 gap-2">
+                            <label 
+                                class="flex items-center p-3 rounded-2xl border-2 cursor-pointer transition"
+                                :class="editFormType === '과제' ? 'border-rose-500 bg-rose-50 text-rose-950 font-bold shadow-sm' : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            >
+                                <div class="flex items-center space-x-2.5">
+                                    <input type="radio" value="과제" v-model="editFormType" class="text-rose-600 focus:ring-rose-500">
+                                    <span class="text-base">📝 과제</span>
+                                </div>
+                            </label>
+
+                            <label 
+                                class="flex items-center p-3 rounded-2xl border-2 cursor-pointer transition"
+                                :class="editFormType === '준비물' ? 'border-sky-500 bg-sky-50 text-sky-950 font-bold shadow-sm' : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            >
+                                <div class="flex items-center space-x-2.5">
+                                    <input type="radio" value="준비물" v-model="editFormType" class="text-sky-600 focus:ring-sky-500">
+                                    <span class="text-base">🎒 준비물</span>
+                                </div>
+                            </label>
+
+                            <label 
+                                class="flex items-center p-3 rounded-2xl border-2 cursor-pointer transition"
+                                :class="editFormType === '지각' ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold shadow-sm' : 'border-slate-100 bg-slate-50 text-slate-600 hover:bg-slate-100'"
+                            >
+                                <div class="flex items-center space-x-2.5">
+                                    <input type="radio" value="지각" v-model="editFormType" class="text-amber-600 focus:ring-amber-500">
+                                    <span class="text-base">⏰ 지각</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">상세 메모</label>
+                        <textarea 
+                            v-model="editFormNote" 
+                            rows="3" 
+                            placeholder="상세 내용을 입력해 주세요."
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
+                        ></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button 
+                            type="button" 
+                            @click="showEditModal = false" 
+                            class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs"
+                        >
+                            취소
+                        </button>
+                        <button 
+                            type="submit" 
+                            class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md flex items-center space-x-1.5"
+                        >
+                            <i class="fa-solid fa-check"></i>
+                            <span>수정 완료</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL 4: 우리반 규칙 보기/수정 모달 -->
+        <div v-if="showRulesModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+            <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden">
+                <div class="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-scroll text-amber-400 text-lg"></i>
+                        <h3 class="font-bold text-lg">우리반 약속 목록 설정</h3>
+                    </div>
+                    <button @click="showRulesModal = false" class="text-slate-400 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        학생들이 <strong>규칙 쓰기</strong>를 할 때 적어야 할 학급 규칙 내용입니다.
+                    </p>
+
+                    <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <div v-for="(rule, i) in classRules" :key="i" class="flex items-center space-x-2">
+                            <span class="text-xs font-bold font-mono text-slate-400 w-5">{{ i + 1 }}.</span>
+                            <input 
+                                type="text" 
+                                v-model="classRules[i]" 
+                                class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            >
+                            <button @click="removeRule(i)" class="text-slate-400 hover:text-rose-500 p-1">
+                                <i class="fa-solid fa-minus-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button @click="addRuleItem" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center space-x-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>규칙 항목 추가하기</span>
+                    </button>
+
+                    <div class="pt-3 border-t flex justify-end">
+                        <button @click="saveClassRules" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-md">
+                            규칙 저장 완료
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 5: 미제출 약속 쓰기 학생 목록 검사 모달 -->
+        <div v-if="showPendingModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
+            <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[85vh]">
+                <div class="bg-indigo-600 px-6 py-4 text-white flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-9 h-9 rounded-xl bg-white/20 text-white font-bold flex items-center justify-center text-lg">
+                            ✍️
+                        </span>
+                        <div>
+                            <h3 class="font-bold text-lg">약속 쓰기 검사 대상 학생 목록</h3>
+                            <p class="text-xs text-indigo-100">총 {{ totalPendingSubmissionsCount }}건의 미제출 과제가 있습니다.</p>
+                        </div>
+                    </div>
+                    <button @click="showPendingModal = false" class="text-indigo-200 hover:text-white text-xl">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                    <div v-if="pendingSubmissionsList.length === 0" class="py-12 text-center text-slate-400">
+                        <div class="text-4xl mb-2">🎉</div>
+                        <p class="text-sm font-bold text-slate-700">모든 학생이 약속 쓰기를 제출했습니다!</p>
+                        <p class="text-xs text-slate-400 mt-1">현재 검사할 미제출 항목이 없습니다.</p>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div 
+                            v-for="item in pendingSubmissionsList" 
+                            :key="item.student.id"
+                            class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                            <div class="flex items-center space-x-3">
+                                <span class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-base shadow-sm">
+                                    {{ item.student.id }}
+                                </span>
+                                <div>
+                                    <div class="font-extrabold text-slate-900 text-base">{{ item.student.id }}번 학생</div>
+                                    <div class="text-xs text-slate-500">누적 체크 {{ item.student.records.length }}회</div>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1.5 flex-1 sm:max-w-xs">
+                                <div 
+                                    v-for="penalty in item.unsubmittedPenalties" 
+                                    :key="penalty.level"
+                                    class="p-2 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs"
+                                >
+                                    <span class="font-bold text-rose-950">✍️ {{ penalty.shortLabel }}</span>
+                                    <button 
+                                        @click="toggleLevelSubmission(item.student, penalty.level)"
+                                        class="px-2.5 py-1 bg-rose-600 hover:bg-emerald-600 text-white rounded-lg font-bold text-[11px] transition shadow-sm flex items-center space-x-1"
+                                    >
+                                        <i class="fa-solid fa-check text-[10px]"></i>
+                                        <span>제출 완료</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-100 border-t border-slate-200 flex justify-end">
+                    <button @click="showPendingModal = false" class="px-5 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs">
+                        닫기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRINT ONLY SECTION: 현황 인쇄 양식 -->
+        <div class="hidden print-only p-8 bg-white">
+            <div class="text-center border-b-2 border-slate-800 pb-4 mb-6">
+                <h1 class="text-3xl font-black text-slate-900">우리반 약속 실천 현황 리포트</h1>
+                <p class="text-xs text-slate-500 mt-2">출력일자: {{ new Date().toLocaleDateString('ko-KR') }}</p>
+            </div>
+
+            <div class="mb-6">
+                <h2 class="text-lg font-bold mb-2">1. 학생별 약속 체크 및 규칙 쓰기 제출 현황</h2>
+                <table class="w-full border-collapse border border-slate-300 text-xs">
+                    <thead>
+                        <tr class="bg-slate-100">
+                            <th class="border border-slate-300 px-3 py-2">번호</th>
+                            <th class="border border-slate-300 px-3 py-2">총 체크</th>
+                            <th class="border border-slate-300 px-3 py-2">과제</th>
+                            <th class="border border-slate-300 px-3 py-2">준비물</th>
+                            <th class="border border-slate-300 px-3 py-2">지각</th>
+                            <th class="border border-slate-300 px-3 py-2">규칙 쓰기 과제</th>
+                            <th class="border border-slate-300 px-3 py-2">제출 확인</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="s in students" :key="s.id" class="text-center">
+                            <td class="border border-slate-300 px-3 py-1.5 font-bold">{{ s.id }}번</td>
+                            <td class="border border-slate-300 px-3 py-1.5 font-mono">{{ s.records.length }}회</td>
+                            <td class="border border-slate-300 px-3 py-1.5">{{ s.records.filter(r => r.type === '과제').length }}</td>
+                            <td class="border border-slate-300 px-3 py-1.5">{{ s.records.filter(r => r.type === '준비물').length }}</td>
+                            <td class="border border-slate-300 px-3 py-1.5">{{ s.records.filter(r => r.type === '지각').length }}</td>
+                            <td class="border border-slate-300 px-3 py-1.5 font-bold text-left text-[11px] leading-tight">
+                                <div v-if="getRequiredPenalties(s.records.length, s).length === 0" class="text-center text-slate-400">-</div>
+                                <div v-else v-for="p in getRequiredPenalties(s.records.length, s)" :key="p.level" class="my-0.5">
+                                    • {{ p.shortLabel }}
+                                </div>
+                            </td>
+                            <td class="border border-slate-300 px-3 py-1.5 font-bold text-left text-[11px] leading-tight">
+                                <div v-if="getRequiredPenalties(s.records.length, s).length === 0" class="text-center text-slate-400">-</div>
+                                <div v-else v-for="p in getRequiredPenalties(s.records.length, s)" :key="p.level" class="my-0.5">
+                                    <span :class="isLevelSubmitted(s, p.level) ? 'text-emerald-700' : 'text-rose-600'">
+                                        {{ isLevelSubmitted(s, p.level) ? '✓ 완료' : '⚠️ 미제출' }}
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-8 border-t pt-4">
+                <h2 class="text-lg font-bold mb-2">2. 우리반 약속 목록</h2>
+                <ol class="list-decimal list-inside text-xs space-y-1 text-slate-700">
+                    <li v-for="(rule, idx) in classRules" :key="idx">{{ rule }}</li>
+                </ol>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Vue App Script -->
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentSemester: 1,
+
+                    studentsBySemester: {
+                        1: [],
+                        2: []
+                    },
+                    
+                    filterStatus: 'ALL',
+
+                    showAddModal: false,
+                    showEditModal: false,
+                    showDetailModal: false,
+                    showRulesModal: false,
+                    showPendingModal: false,
+
+                    activeStudent: null,
+
+                    formDate: this.getTodayDateString(),
+                    formType: '과제',
+                    formNote: '',
+
+                    editRecordId: null,
+                    editFormDate: '',
+                    editFormType: '과제',
+                    editFormNote: '',
+
+                    penaltyAlert: {
+                        show: false,
+                        studentId: null,
+                        count: 0,
+                        penaltyText: ''
+                    },
+
+                    classRules: [
+                        "[존중 1] 거짓말하지 않기",
+                        "[존중 2] 다른 사람이 싫어하는 행동하지 않기",
+                        "[끈기 1] 불평하지 않기",
+                        "[끈기 2] 자기 할 일은 스스로 끝까지 해보기"
+                    ]
+                }
+            },
+            computed: {
+                students() {
+                    return this.studentsBySemester[this.currentSemester] || [];
+                },
+                filteredStudents() {
+                    if (this.filterStatus === 'WRITING_REQUIRED') {
+                        return this.students.filter(s => this.getRequiredPenalties(s.records.length, s).length > 0);
+                    } else if (this.filterStatus === 'CLEAN') {
+                        return this.students.filter(s => s.records.length === 0);
+                    }
+                    return this.students;
+                },
+                actionRequiredStudentsCount() {
+                    return this.students.filter(s => this.getRequiredPenalties(s.records.length, s).length > 0).length;
+                },
+                totalPendingSubmissionsCount() {
+                    let count = 0;
+                    this.students.forEach(s => {
+                        const required = this.getRequiredPenalties(s.records.length, s);
+                        required.forEach(p => {
+                            if (!this.isLevelSubmitted(s, p.level)) {
+                                count++;
+                            }
+                        });
+                    });
+                    return count;
+                },
+                pendingSubmissionsList() {
+                    const list = [];
+                    this.students.forEach(s => {
+                        const reqs = this.getRequiredPenalties(s.records.length, s);
+                        const unsubmitted = reqs.filter(p => !this.isLevelSubmitted(s, p.level));
+                        if (unsubmitted.length > 0) {
+                            list.push({
+                                student: s,
+                                unsubmittedPenalties: unsubmitted
+                            });
+                        }
+                    });
+                    return list;
+                },
+                cleanStudentsCount() {
+                    return this.students.filter(s => s.records.length === 0).length;
+                }
+            },
+            created() {
+                this.initData();
+            },
+            methods: {
+                // 오늘 로컬 날짜 문자열(YYYY-MM-DD) 생성
+                getTodayDateString() {
+                    const d = new Date();
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                },
+
+                // 날짜 파싱
+                parseLocalDate(dateStr) {
+                    if (!dateStr) return null;
+                    const parts = dateStr.split('-');
+                    if (parts.length !== 3) return null;
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                },
+
+                // 주말(토, 일)을 제외한 평일 경과 수 계산 (시작일 다음 날부터 당일까지)
+                countSchoolDays(startDateStr, endDateStr) {
+                    if (!startDateStr || !endDateStr) return 0;
+                    const start = this.parseLocalDate(startDateStr);
+                    const end = this.parseLocalDate(endDateStr);
+                    if (!start || !end || start >= end) return 0;
+
+                    let count = 0;
+                    let cur = new Date(start);
+                    cur.setDate(cur.getDate() + 1);
+
+                    while (cur <= end) {
+                        const day = cur.getDay(); // 0: 일요일, 6: 토요일
+                        if (day !== 0 && day !== 6) {
+                            count++;
+                        }
+                        cur.setDate(cur.getDate() + 1);
+                    }
+                    return count;
+                },
+
+                initData() {
+                    const savedData = localStorage.getItem('elem_rule_students_v4');
+                    const savedRules = localStorage.getItem('elem_class_rules_v2');
+
+                    if (savedRules) {
+                        try { this.classRules = JSON.parse(savedRules); } catch(e) {}
+                    }
+
+                    if (savedData) {
+                        try {
+                            const parsed = JSON.parse(savedData);
+                            if (parsed[1] && parsed[2]) {
+                                this.studentsBySemester = parsed;
+                            } else {
+                                this.studentsBySemester[1] = parsed;
+                                this.studentsBySemester[2] = this.createDefaultStudentList();
+                            }
+                        } catch(e) {
+                            this.generateInitialStudents();
+                        }
+                    } else {
+                        this.generateInitialStudents();
+                    }
+                },
+
+                createDefaultStudentList() {
+                    const list = [];
+                    for (let i = 1; i <= 23; i++) {
+                        list.push({
+                            id: i,
+                            records: [],
+                            submittedLevels: []
+                        });
+                    }
+                    return list;
+                },
+
+                generateInitialStudents() {
+                    this.studentsBySemester = {
+                        1: this.createDefaultStudentList(),
+                        2: this.createDefaultStudentList()
+                    };
+                    this.saveToLocalStorage();
+                },
+
+                saveToLocalStorage() {
+                    localStorage.setItem('elem_rule_students_v4', JSON.stringify(this.studentsBySemester));
+                },
+
+                // ★ 다음 등교일 기본 제출 및 미제출 시 +1회씩 증가 로직
+                getRequiredPenalties(count, student) {
+                    const list = [];
+                    const todayStr = this.getTodayDateString();
+
+                    const levels = [
+                        { level: 2, base: 1, ordinal: '1차' },
+                        { level: 4, base: 2, ordinal: '2차' },
+                        { level: 6, base: 3, ordinal: '3차' }
+                    ];
+
+                    levels.forEach(item => {
+                        if (count >= item.level) {
+                            const triggerRecord = student && student.records ? student.records[item.level - 1] : null;
+                            const triggerDateStr = triggerRecord ? triggerRecord.date : todayStr;
+                            
+                            const isSubmitted = this.isLevelSubmitted(student, item.level);
+                            
+                            // 토/일 제외 평일 수 (0: 당일, 1: 다음 등교일, 2: 다다음 등교일 ...)
+                            const schoolDays = this.countSchoolDays(triggerDateStr, todayStr);
+                            
+                            // 다음 등교일(schoolDays === 1)까지는 기본 횟수, 그 이후부터 1회씩 추가
+                            const extraWritings = Math.max(0, schoolDays - 1);
+                            const totalWritings = isSubmitted ? item.base : (item.base + extraWritings);
+
+                            let shortLabel = `${item.ordinal} (규칙 ${totalWritings}번 쓰기)`;
+                            let fullLabel = `${item.ordinal}: 규칙 ${totalWritings}번 쓰기 (기본 ${item.base}번)`;
+
+                            if (!isSubmitted) {
+                                if (extraWritings > 0) {
+                                    // '평일' 글자 제외하고 +N일 형태로만 표기
+                                    shortLabel = `${item.ordinal} (규칙 ${totalWritings}번 쓰기 ⚠️ +${extraWritings}일)`;
+                                    fullLabel = `${item.ordinal}: 규칙 ${totalWritings}번 쓰기 (기본 ${item.base}번 + ${extraWritings}회 추가 / +${extraWritings}일 지연)`;
+                                } else if (schoolDays === 1) {
+                                    shortLabel = `${item.ordinal} (규칙 ${totalWritings}번 쓰기 - 오늘 제출)`;
+                                    fullLabel = `${item.ordinal}: 규칙 ${totalWritings}번 쓰기 (기본 ${item.base}번 / 오늘 제출 마감)`;
+                                } else {
+                                    shortLabel = `${item.ordinal} (규칙 ${totalWritings}번 쓰기 - 다음 등교일 제출)`;
+                                    fullLabel = `${item.ordinal}: 규칙 ${totalWritings}번 쓰기 (기본 ${item.base}번 / 다음 등교일 제출)`;
+                                }
+                            }
+
+                            list.push({
+                                level: item.level,
+                                baseCount: item.base,
+                                totalCount: totalWritings,
+                                schoolDays: schoolDays,
+                                extraWritings: extraWritings,
+                                shortLabel: shortLabel,
+                                fullLabel: fullLabel
+                            });
+                        }
+                    });
+
+                    return list;
+                },
+
+                isLevelSubmitted(student, level) {
+                    if (!student || !student.submittedLevels) return false;
+                    return student.submittedLevels.includes(level);
+                },
+
+                toggleLevelSubmission(student, level) {
+                    if (!student) return;
+                    if (!student.submittedLevels) {
+                        student.submittedLevels = [];
+                    }
+                    const idx = student.submittedLevels.indexOf(level);
+                    if (idx > -1) {
+                        student.submittedLevels.splice(idx, 1);
+                    } else {
+                        student.submittedLevels.push(level);
+                    }
+                    this.saveToLocalStorage();
+                },
+
+                openAddRecordModal(student) {
+                    this.activeStudent = student;
+                    this.formDate = this.getTodayDateString();
+                    this.formType = '과제';
+                    this.formNote = '';
+                    this.showAddModal = true;
+                },
+
+                openEditRecordModal(record) {
+                    this.editRecordId = record.id;
+                    this.editFormDate = record.date;
+                    this.editFormType = record.type;
+                    this.editFormNote = record.note || '';
+                    this.showEditModal = true;
+                },
+
+                saveRecord() {
+                    if (!this.activeStudent) return;
+                    
+                    const newRecord = {
+                        id: Date.now(),
+                        date: this.formDate,
+                        type: this.formType,
+                        note: this.formNote
+                    };
+
+                    this.activeStudent.records.push(newRecord);
+                    const newCount = this.activeStudent.records.length;
+
+                    if (newCount === 2 || newCount === 4 || newCount === 6) {
+                        const penalties = this.getRequiredPenalties(newCount, this.activeStudent);
+                        const currentPenalty = penalties.find(p => p.level === newCount);
+                        
+                        this.penaltyAlert = {
+                            show: true,
+                            studentId: this.activeStudent.id,
+                            count: newCount,
+                            penaltyText: currentPenalty ? currentPenalty.shortLabel : `우리반 규칙 ${newCount / 2}번 쓰기`
+                        };
+                    }
+
+                    this.saveToLocalStorage();
+                    this.showAddModal = false;
+                },
+
+                saveEditedRecord() {
+                    if (!this.activeStudent || !this.editRecordId) return;
+
+                    const record = this.activeStudent.records.find(r => r.id === this.editRecordId);
+                    if (record) {
+                        record.date = this.editFormDate;
+                        record.type = this.editFormType;
+                        record.note = this.editFormNote;
+                        this.saveToLocalStorage();
+                    }
+                    this.showEditModal = false;
+                },
+
+                deleteRecord(student, recordId) {
+                    if (!student) return;
+                    student.records = student.records.filter(r => r.id !== recordId);
+                    this.saveToLocalStorage();
+                },
+
+                openStudentDetailModal(student) {
+                    this.activeStudent = student;
+                    this.showDetailModal = true;
+                },
+
+                openPendingModal() {
+                    this.showPendingModal = true;
+                },
+
+                openClassRulesModal() {
+                    this.showRulesModal = true;
+                },
+
+                saveClassRules() {
+                    localStorage.setItem('elem_class_rules_v2', JSON.stringify(this.classRules));
+                    this.showRulesModal = false;
+                },
+
+                addRuleItem() {
+                    this.classRules.push('새로운 학급 규칙 항목');
+                },
+
+                removeRule(index) {
+                    this.classRules.splice(index, 1);
+                },
+
+                getCountBadgeStyle(count) {
+                    if (count >= 6) return 'bg-rose-100 text-rose-800 border border-rose-300';
+                    if (count >= 4) return 'bg-amber-100 text-amber-800 border border-amber-300';
+                    if (count >= 2) return 'bg-indigo-100 text-indigo-800 border border-indigo-300';
+                    return 'bg-slate-100 text-slate-700 border border-slate-200';
+                },
+
+                getReasonStyle(type) {
+                    if (type === '과제') return 'bg-rose-50 text-rose-900 border-rose-200';
+                    if (type === '준비물') return 'bg-sky-50 text-sky-900 border-sky-200';
+                    if (type === '지각') return 'bg-amber-50 text-amber-900 border-amber-200';
+                    return 'bg-slate-50 text-slate-800 border-slate-200';
+                },
+
+                getReasonIcon(type) {
+                    if (type === '과제') return '📝';
+                    if (type === '준비물') return '🎒';
+                    if (type === '지각') return '⏰';
+                    return '📌';
+                },
+
+                triggerPrint() {
+                    window.print();
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
